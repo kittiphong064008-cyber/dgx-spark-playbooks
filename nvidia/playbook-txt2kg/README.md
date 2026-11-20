@@ -126,6 +126,7 @@ Common options:
 ## Stack flags
 ./start.sh --neo4j     # Neo4j + Ollama
 ./start.sh --vllm      # Neo4j + vLLM
+./start.sh --litellm   # Neo4j + LiteLLM (external proxy)
 
 ## Optional flags
 ./start.sh --vector-search   # Add Qdrant + Sentence Transformers
@@ -170,6 +171,23 @@ docker exec ollama-compose ollama pull llama3.1:8b
 Then select the model in the web UI.
 
 **Explore more models:** browse the [Ollama model library](https://ollama.com/search). Prefer models that fit the memory available on your hardware platform.
+
+### LiteLLM stack (External Proxy)
+
+To connect txt2kg to an external LiteLLM proxy (e.g. running on Tailscale or a remote server):
+
+1. Configure environment variables in `.env` (or export them):
+   ```bash
+   VLLM_BASE_URL=http://<litellm-host>:4000/v1
+   VLLM_MODEL="Gemma4-e4b FP8"
+   VLLM_API_KEY=sk-...
+   ```
+2. Start the stack:
+   ```bash
+   ./start.sh --litellm
+   ```
+
+No local LLM container (Ollama or vLLM) will be launched, saving local GPU memory.
 
 ### vLLM stack
 

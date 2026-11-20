@@ -1,0 +1,144 @@
+# txt2kg Docker Compose - Neo4j + LiteLLM (External Proxy)
+#
+# Connects txt2kg to an external LiteLLM proxy (e.g. running on Tailscale or remote host).
+# Does not spin up local Ollama or vLLM container, saving local GPU memory and resources.
+#
+# Usage:
+#   ./start.sh --litellm                 # Neo4j + LiteLLM
+#   ./start.sh --litellm --vector-search # Add Qdrant + Sentence Transformers
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: deploy/app/Dockerfile
+    ports:
+      - '3001:3000'
+    environment:
+      # Neo4j configuration
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=password123
+      - GRAPH_DB_TYPE=neo4j
+      # Disable ArangoDB
+      - ARANGODB_URL=http://localhost:8529
+      - ARANGODB_DB=txt2kg
+      # LiteLLM (via OpenAI-compatible vLLM client)
+      - VLLM_BASE_URL=${VLLM_BASE_URL:-http://100.93.246.21:4000/v1}
+      - VLLM_MODEL=${VLLM_MODEL:-Gemma4-e4b FP8}
+      - VLLM_API_KEY=${VLLM_API_KEY:-sk-GSU1AbLsc-qA7Pt1nsD8iw}
+      # Disable Ollama
+      - OLLAMA_BASE_URL=http://localhost:11434/v1
+      - OLLAMA_MODEL=disabled
+      # Vector DB configuration
+      - VECTOR_SEARCH_ENABLED=${VECTOR_SEARCH_ENABLED:-false}
+      - QDRANT_URL=http://qdrant:6333
+      - VECTOR_DB_TYPE=qdrant
+      # Embeddings configuration
+      - LANGCHAIN_TRACING_V2=true
+      - SENTENCE_TRANSFORMER_URL=http://sentence-transformers:80
+      - MODEL_NAME=all-MiniLM-L6-v2
+      - EMBEDDINGS_API_URL=http://sentence-transformers:80
+      # Other settings
+      - GRPC_SSL_CIPHER_SUITES=HIGH+ECDSA:HIGH+aRSA
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
+      - NODE_OPTIONS=--max-http-header-size=80000
+      - UV_THREADPOOL_SIZE=128
+      - HTTP_TIMEOUT=1800000
+      - REQUEST_TIMEOUT=1800000
+    networks:
+      - default
+      - txt2kg-network
+      - qdrant-net
+    depends_on:
+      neo4j:
+        condition: service_healthy
+
+  # Neo4j - Graph database
+  neo4j:
+    image: neo4j:5-community
+    ports:
+      - '7474:7474'
+      - '7687:7687'
+    environment:
+      - NEO4J_AUTH=neo4j/password123
+      - NEO4J_server_memory_heap_initial__size=512m
+      - NEO4J_server_memory_heap_max__size=2G
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    networks:
+      - default
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # Optional: Vector search services
+  sentence-transformers:
+    build:
+      context: ../services/sentence-transformers
+      dockerfile: Dockerfile
+    ports:
+      - '8000:80'
+    environment:
+      - MODEL_NAME=all-MiniLM-L6-v2
+    networks:
+      - default
+    restart: unless-stopped
+    profiles:
+      - vector-search
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - qdrant-net
+    restart: unless-stopped
+    profiles:
+      - vector-search
+
+  qdrant-init:
+    image: curlimages/curl:latest
+    depends_on:
+      - qdrant
+    restart: "no"
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo 'Waiting for Qdrant to start...'
+        sleep 5
+        curl -X PUT http://qdrant:6333/collections/entity-embeddings \
+          -H 'Content-Type: application/json' \
+          -d '{"vectors":{"size":384,"distance":"Cosine"}}' || true
+        curl -X PUT http://qdrant:6333/collections/document-embeddings \
+          -H 'Content-Type: application/json' \
+          -d '{"vectors":{"size":384,"distance":"Cosine"}}' || true
+        echo 'Collections created'
+    networks:
+      - qdrant-net
+    profiles:
+      - vector-search
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  qdrant_data:
+
+networks:
+  default:
+    driver: bridge
+  txt2kg-network:
+    driver: bridge
+  qdrant-net:
+    name: qdrant-network

@@ -22,6 +22,7 @@
 DEV_FRONTEND=false
 USE_VLLM=false
 USE_NEO4J=false
+USE_LITELLM=false
 USE_VECTOR_SEARCH=false
 
 while [[ $# -gt 0 ]]; do
@@ -38,6 +39,10 @@ while [[ $# -gt 0 ]]; do
       USE_NEO4J=true
       shift
       ;;
+    --litellm)
+      USE_LITELLM=true
+      shift
+      ;;
     --vector-search)
       USE_VECTOR_SEARCH=true
       shift
@@ -49,6 +54,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --dev-frontend    Run frontend in development mode (without Docker)"
       echo "  --vllm            Use Neo4j + vLLM (GPU-accelerated, for DGX Spark/GB300)"
       echo "  --neo4j           Use Neo4j + Ollama"
+      echo "  --litellm         Use Neo4j + LiteLLM (connects to external LiteLLM proxy)"
       echo "  --vector-search   Enable vector search services (Qdrant + Sentence Transformers)"
       echo "  --help, -h        Show this help message"
       echo ""
@@ -58,9 +64,11 @@ while [[ $# -gt 0 ]]; do
       echo "  ./start.sh                       # Default: ArangoDB + Ollama"
       echo "  ./start.sh --vllm                # Use Neo4j + vLLM (GPU)"
       echo "  ./start.sh --neo4j               # Use Neo4j + Ollama"
+      echo "  ./start.sh --litellm             # Use Neo4j + LiteLLM"
       echo "  ./start.sh --vector-search       # Add Qdrant + Sentence Transformers"
       echo "  ./start.sh --vllm --vector-search  # vLLM + vector search"
       echo "  ./start.sh --neo4j --vector-search # Neo4j + Ollama + vector search"
+      echo "  ./start.sh --litellm --vector-search # LiteLLM + vector search"
       exit 0
       ;;
     *)
@@ -71,8 +79,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [ "$USE_VLLM" = true ] && [ "$USE_NEO4J" = true ]; then
-  echo "Error: --vllm and --neo4j select different stacks. Use only one."
+# Validate mutually exclusive stack flags
+STACK_FLAGS=0
+[ "$USE_VLLM" = true ] && STACK_FLAGS=$((STACK_FLAGS + 1))
+[ "$USE_NEO4J" = true ] && STACK_FLAGS=$((STACK_FLAGS + 1))
+[ "$USE_LITELLM" = true ] && STACK_FLAGS=$((STACK_FLAGS + 1))
+
+if [ "$STACK_FLAGS" -gt 1 ]; then
+  echo "Error: --vllm, --neo4j, and --litellm select different stacks. Use only one."
   exit 1
 fi
 
@@ -149,6 +163,9 @@ if [ "$USE_VLLM" = true ]; then
   COMPOSE_FILE="$COMPOSE_DIR/docker-compose.vllm.yml"
   echo "Using Neo4j + vLLM (GPU-accelerated)..."
   echo "  ⚡ Optimized for DGX Spark/GB300 with unified memory support"
+elif [ "$USE_LITELLM" = true ]; then
+  COMPOSE_FILE="$COMPOSE_DIR/docker-compose.litellm.yml"
+  echo "Using Neo4j + LiteLLM (external proxy)..."
 elif [ "$USE_NEO4J" = true ]; then
   COMPOSE_FILE="$COMPOSE_DIR/docker-compose.neo4j.yml"
   echo "Using Neo4j + Ollama configuration..."
@@ -208,6 +225,9 @@ echo "  • Web UI: http://localhost:3001"
 if [ "$USE_VLLM" = true ]; then
   echo "  • Neo4j Browser: http://localhost:7474"
   echo "  • vLLM API: http://localhost:8001 (GPU-accelerated)"
+elif [ "$USE_LITELLM" = true ]; then
+  echo "  • Neo4j Browser: http://localhost:7474"
+  echo "  • LiteLLM Proxy: ${VLLM_BASE_URL:-http://100.93.246.21:4000/v1}"
 elif [ "$USE_NEO4J" = true ]; then
   echo "  • Neo4j Browser: http://localhost:7474"
   echo "  • Ollama API: http://localhost:11434"

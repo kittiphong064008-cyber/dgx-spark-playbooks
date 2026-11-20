@@ -1,0 +1,32 @@
+name: DGX3-AI-Server
+version: 1.0.0
+schema: v1
+models:
+  - name: DGX3
+    provider: openai
+    model: gemma4-e2b
+    apiBase: http://100.93.246.21:4000/v1
+    apiKey: sk-2vZQHvw9veqLtpw8zQbT6g
+    roles:
+      - chat
+      - edit
+      - apply
+  
+  - name: DGX3
+    provider: openai
+    model: qwen3-27b
+    apiBase: http://100.93.246.21:4000/v1
+    apiKey: sk-8P8JdiCczFjFkcVE9wzuFA
+    roles:
+      - chat
+      - edit
+      - apply
+    
+  - name: DGX3
+    provider: openai
+    model: gemma4-e2b
+    apiBase: http://100.93.246.21:11434/v1
+    roles:
+      - chat
+      - edit
+      - applyx

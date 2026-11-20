@@ -24,10 +24,12 @@ services:
       - ARANGODB_URL=http://localhost:8529
       - ARANGODB_DB=txt2kg
       # Ollama configuration
-      - OLLAMA_BASE_URL=http://ollama:11434/v1
-      - OLLAMA_MODEL=llama3.1:8b
-      # vLLM disabled in Ollama mode
-      - VLLM_MODEL=disabled
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434/v1}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.1:8b}
+      # vLLM / LiteLLM configuration
+      - VLLM_BASE_URL=${VLLM_BASE_URL:-http://localhost:8001/v1}
+      - VLLM_MODEL=${VLLM_MODEL:-disabled}
+      - VLLM_API_KEY=${VLLM_API_KEY:-}
       # Vector DB configuration
       - VECTOR_SEARCH_ENABLED=${VECTOR_SEARCH_ENABLED:-false}
       - QDRANT_URL=http://qdrant:6333

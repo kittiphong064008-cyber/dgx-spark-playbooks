@@ -22,12 +22,13 @@ services:
       # Disable ArangoDB
       - ARANGODB_URL=http://localhost:8529
       - ARANGODB_DB=txt2kg
-      # vLLM configuration (GPU-accelerated)
-      - VLLM_BASE_URL=http://vllm:8001/v1
-      - VLLM_MODEL=nvidia/Llama-3_3-Nemotron-Super-49B-v1_5-FP8
+      # vLLM / LiteLLM configuration (GPU-accelerated)
+      - VLLM_BASE_URL=${VLLM_BASE_URL:-http://vllm:8001/v1}
+      - VLLM_MODEL=${VLLM_MODEL:-nvidia/Llama-3_3-Nemotron-Super-49B-v1_5-FP8}
+      - VLLM_API_KEY=${VLLM_API_KEY:-}
       # Disable Ollama
-      - OLLAMA_BASE_URL=http://localhost:11434/v1
-      - OLLAMA_MODEL=disabled
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://localhost:11434/v1}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-disabled}
       # Vector DB configuration
       - VECTOR_SEARCH_ENABLED=${VECTOR_SEARCH_ENABLED:-false}
       - QDRANT_URL=http://qdrant:6333

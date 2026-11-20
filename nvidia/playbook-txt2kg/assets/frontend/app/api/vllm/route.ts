@@ -64,13 +64,18 @@ export async function GET(req: NextRequest) {
   if (action === 'test-connection') {
     try {
       const vllmBaseUrl = process.env.VLLM_BASE_URL || 'http://localhost:8001/v1';
+      const vllmApiKey = process.env.VLLM_API_KEY;
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (vllmApiKey) {
+        headers['Authorization'] = `Bearer ${vllmApiKey}`;
+      }
       
-      // Test connection to vLLM service using built-in /v1/models endpoint
+      // Test connection to vLLM / LiteLLM service using built-in /v1/models endpoint
       const response = await fetch(`${vllmBaseUrl}/models`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         signal: AbortSignal.timeout(10000),
       });
 
@@ -185,17 +190,20 @@ ${text}`
 
 function parseTriplesResponse(response: string): Triple[] {
   const parsed = parseJsonPayload(response);
-  const triples = Array.isArray(parsed) ? parsed : parsed?.triples;
+  const rawTriples = Array.isArray(parsed) ? parsed : parsed?.triples;
 
-  if (!Array.isArray(triples)) {
+  if (!Array.isArray(rawTriples)) {
     throw new Error('vLLM returned JSON, but it did not contain a triples array.');
   }
 
-  const validTriples = triples
+  // Flatten in case the model returns nested arrays (e.g. [[{subject, ...}]])
+  const flatTriples = rawTriples.flat(Infinity);
+
+  const validTriples = flatTriples
     .map((triple: unknown) => normalizeTriple(triple))
     .filter((triple): triple is Triple => triple !== null);
 
-  if (validTriples.length === 0 && triples.length > 0) {
+  if (validTriples.length === 0 && flatTriples.length > 0) {
     throw new Error('vLLM returned triples, but none had valid subject, predicate, and object fields.');
   }
 

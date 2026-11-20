@@ -269,9 +269,11 @@ export class LangChainService {
       temperature?: number;
       maxTokens?: number;
       baseURL?: string;
+      apiKey?: string;
     }
   ): Promise<ChatOpenAI> {
     const baseURL = options?.baseURL || process.env.VLLM_BASE_URL || 'http://localhost:8001/v1';
+    const apiKey = options?.apiKey || process.env.VLLM_API_KEY || 'vllm';
     const cacheKey = `vllm-${modelId}-${options?.temperature || 0.7}-${options?.maxTokens || 8192}-${baseURL}`;
     
     if (this.modelCache[cacheKey]) {
@@ -286,7 +288,7 @@ export class LangChainService {
         modelName: modelId,
         temperature: options?.temperature || 0.7,
         maxTokens: options?.maxTokens || 8192,
-        openAIApiKey: 'vllm', // vLLM doesn't require a real API key
+        openAIApiKey: apiKey,
         configuration: {
           baseURL: baseURL,
           timeout: 120000, // 2 minute timeout for vLLM inference

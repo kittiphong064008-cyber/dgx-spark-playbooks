@@ -116,8 +116,9 @@ export class LLMService {
     });
     this.ollamaBaseUrl = ollamaUrl;
 
-    // Initialize vLLM client with connection pooling - no API key needed for local vLLM
+    // Initialize vLLM / LiteLLM client with connection pooling
     const vllmUrl = process.env.VLLM_BASE_URL || this.vllmBaseUrl;
+    const vllmApiKey = process.env.VLLM_API_KEY || 'vllm';
     
     // Create HTTP agent with connection pooling for vLLM
     const vllmHttpAgent = new Agent({
@@ -129,7 +130,7 @@ export class LLMService {
     });
 
     this.vllmClient = new OpenAI({
-      apiKey: 'vllm', // vLLM doesn't require a real API key
+      apiKey: vllmApiKey,
       baseURL: vllmUrl,
       httpAgent: vllmHttpAgent
     });

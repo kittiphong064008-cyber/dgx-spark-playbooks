@@ -622,8 +622,16 @@ Answer:`;
           timeout: 120000  // 120 second timeout
         });
       } else if (finalProvider === 'vllm') {
-        // Use vLLM's OpenAI-compatible API
+        // Use vLLM or LiteLLM's OpenAI-compatible API
         const vllmUrl = process.env.VLLM_BASE_URL || 'http://vllm:8001/v1';
+        const vllmApiKey = process.env.VLLM_API_KEY;
+
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
+        if (vllmApiKey) {
+          headers['Authorization'] = `Bearer ${vllmApiKey}`;
+        }
 
         response = await axios.post(`${vllmUrl}/chat/completions`, {
           model: finalModel,
@@ -640,9 +648,7 @@ Answer:`;
           temperature: 0.2,
           max_tokens: 800
         }, {
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers,
           timeout: 120000
         });
       } else {
